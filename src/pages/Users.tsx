@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import authService from "../services/authService";
 
@@ -12,11 +12,20 @@ interface User {
   createdAt?: Date;
 }
 
+// Type pour les options de tri
+type SortField = 'name' | 'email' | 'role' | 'lastLogin' | 'createdAt';
+type SortOrder = 'asc' | 'desc';
+
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  
+  // États pour la recherche et le tri
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // Utiliser la même URL d'API que dans authService
   const API_URL = 'https://react-gpsapi.vercel.app/api';
@@ -40,12 +49,16 @@ export default function Users() {
           headers: { Authorization: `Bearer ${token}` }
         };
         
-        console.log("Récupération des utilisateurs depuis:", `${API_URL}/users`);
+        console.log("Récupération des utilisateurs depuis:", `${API_URL}/auth/users`);
         const response = await axios.get(`${API_URL}/auth/users`, axiosConfig);
         
         console.log("Réponse:", response.data);
         
         if (response.data.success) {
+          // Afficher le premier utilisateur pour le débogage
+          if (response.data.users.length > 0) {
+            console.log("Format d'un utilisateur:", response.data.users[0]);
+          }
           setUsers(response.data.users);
         } else {
           setError("Impossible de récupérer la liste des utilisateurs");
@@ -100,8 +113,10 @@ export default function Users() {
         headers: { Authorization: `Bearer ${token}` }
       };
       
-      // Utiliser _id au lieu de id si c'est ce qu'attend votre API MongoDB
-      // Adaptation de l'URL selon la structure attendue par votre API
+      // Utiliser _id pour l'API MongoDB
+      console.log("Promotion d'utilisateur avec ID:", userId);
+      console.log("Type d'ID:", typeof userId, "Longueur:", userId.length);
+      
       const response = await axios.put(`${API_URL}/auth/promote/${userId}`, {}, axiosConfig);
       
       if (response.data.success) {
@@ -145,7 +160,10 @@ export default function Users() {
         headers: { Authorization: `Bearer ${token}` }
       };
       
-      // Utiliser _id au lieu de id si c'est ce qu'attend votre API MongoDB
+      // Utiliser _id pour l'API MongoDB
+      console.log("Rétrogradation d'utilisateur avec ID:", userId);
+      console.log("Type d'ID:", typeof userId, "Longueur:", userId.length);
+      
       const response = await axios.put(`${API_URL}/auth/demote/${userId}`, {}, axiosConfig);
       
       if (response.data.success) {
@@ -172,12 +190,61 @@ export default function Users() {
     }
   };
 
+  // Gérer le changement de tri
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Si on clique sur le même champ, on inverse l'ordre
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Sinon on trie par le nouveau champ en ordre ascendant
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  // Obtenir une flèche indiquant le sens du tri
+  const getSortArrow = (field: SortField) => {
+    if (sortField !== field) return null;
+    return sortOrder === 'asc' ? ' ↑' : ' ↓';
+  };
+
   // Formater une date
   const formatDate = (dateString?: Date) => {
     if (!dateString) return "Jamais";
     const date = new Date(dateString);
     return date.toLocaleString("fr-FR");
   };
+
+  // Filtrer et trier les utilisateurs (avec useMemo pour l'optimisation des performances)
+  const filteredAndSortedUsers = useMemo(() => {
+    // Filtrer d'abord par terme de recherche
+    let result = users.filter(user => 
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    // Puis trier selon le champ et l'ordre choisis
+    return result.sort((a, b) => {
+      let fieldA: any = a[sortField];
+      let fieldB: any = b[sortField];
+      
+      // Gestion spéciale pour les dates
+      if (sortField === 'lastLogin' || sortField === 'createdAt') {
+        fieldA = fieldA ? new Date(fieldA).getTime() : 0;
+        fieldB = fieldB ? new Date(fieldB).getTime() : 0;
+      } 
+      // Gestion des champs texte (conversion à lowercase pour tri insensible à la casse)
+      else if (typeof fieldA === 'string' && typeof fieldB === 'string') {
+        fieldA = fieldA.toLowerCase();
+        fieldB = fieldB.toLowerCase();
+      }
+      
+      if (fieldA < fieldB) return sortOrder === 'asc' ? -1 : 1;
+      if (fieldA > fieldB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [users, searchTerm, sortField, sortOrder]);
 
   if (loading) {
     return (
@@ -197,20 +264,68 @@ export default function Users() {
         </div>
       )}
 
+      {/* Barre de recherche et compteur */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="relative w-full md:w-64">
+          <input
+            type="text"
+            placeholder="Rechercher..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            <svg className="w-5 h-5 text-gray-400 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+        </div>
+        
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          {filteredAndSortedUsers.length} utilisateur{filteredAndSortedUsers.length > 1 ? 's' : ''} trouvé{filteredAndSortedUsers.length > 1 ? 's' : ''}
+          {searchTerm && ` pour "${searchTerm}"`}
+        </div>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-lg">
           <thead className="bg-gray-100 dark:bg-gray-700">
             <tr>
-              <th className="py-3 px-4 text-left">Nom</th>
-              <th className="py-3 px-4 text-left">Email</th>
-              <th className="py-3 px-4 text-left">Rôle</th>
-              <th className="py-3 px-4 text-left">Dernière connexion</th>
-              <th className="py-3 px-4 text-left">Date d'inscription</th>
+              <th 
+                className="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"
+                onClick={() => handleSort('name')}
+              >
+                Nom {getSortArrow('name')}
+              </th>
+              <th 
+                className="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"
+                onClick={() => handleSort('email')}
+              >
+                Email {getSortArrow('email')}
+              </th>
+              <th 
+                className="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"
+                onClick={() => handleSort('role')}
+              >
+                Rôle {getSortArrow('role')}
+              </th>
+              <th 
+                className="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"
+                onClick={() => handleSort('lastLogin')}
+              >
+                Dernière connexion {getSortArrow('lastLogin')}
+              </th>
+              <th 
+                className="py-3 px-4 text-left cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600"
+                onClick={() => handleSort('createdAt')}
+              >
+                Date d'inscription {getSortArrow('createdAt')}
+              </th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-            {users.map((user) => (
+            {filteredAndSortedUsers.map((user) => (
               <tr key={user._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="py-3 px-4">{user.name || "Non défini"}</td>
                 <td className="py-3 px-4">{user.email}</td>
@@ -250,9 +365,12 @@ export default function Users() {
         </table>
       </div>
       
-      {users.length === 0 && !loading && !error && (
-        <div className="text-center py-8 text-gray-500">
-          Aucun utilisateur trouvé.
+      {filteredAndSortedUsers.length === 0 && !loading && !error && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          {searchTerm 
+            ? `Aucun utilisateur ne correspond à "${searchTerm}"`
+            : "Aucun utilisateur trouvé."
+          }
         </div>
       )}
     </div>
