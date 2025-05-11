@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import Reports from "./pages/Reports";
+import Predictions from "./pages/Predictions";
 import Login from "./pages/Login";
 import PrivateRoute from "./components/PrivateRoute";
 import authService from "./services/authService";
@@ -85,6 +86,15 @@ const App: React.FC = () => {
                 element={
                   <PrivateRoute isAuthenticated={isAuthenticated}>
                     <Reports />
+                  </PrivateRoute>
+                } 
+              />
+              
+              <Route 
+                path="/predictions" 
+                element={
+                  <PrivateRoute isAuthenticated={isAuthenticated}>
+                    <Predictions />
                   </PrivateRoute>
                 } 
               />

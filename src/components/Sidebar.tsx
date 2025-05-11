@@ -1,36 +1,73 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 interface SidebarProps {
   isOpen: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
-  const location = useLocation();
-
-  const linkClass = (path: string) =>
-    `block px-4 py-2 rounded-lg font-medium transition-colors ${
-      location.pathname === path
-        ? "bg-blue-500 text-white"
-        : "text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-    }`;
-
   return (
-    <aside
-      className={`
-        fixed top-0 left-0 h-full z-40
-        transform transition-transform duration-300 ease-in-out
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        w-64 bg-white dark:bg-gray-800 shadow-md p-4
-      `}
+    <div
+      className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 text-white transform transition-transform duration-300 ${
+        isOpen ? "translate-x-0" : "-translate-x-64"
+      }`}
     >
-      <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">Admin Panel</h2>
-      <nav className="space-y-2">
-        <Link to="/" className={linkClass("/")}>Dashboard</Link>
-        <Link to="/users" className={linkClass("/users")}>Utilisateurs</Link>
-        <Link to="/reports" className={linkClass("/reports")}>Signalements</Link>
-      </nav>
-    </aside>
+      <div className="p-5">
+        <h2 className="text-2xl font-bold mb-5">Admin Panel</h2>
+        <nav className="mt-8">
+          <ul className="space-y-2">
+            <li>
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `block p-3 rounded hover:bg-gray-700 ${
+                    isActive ? "bg-blue-600" : ""
+                  }`
+                }
+              >
+                <span className="mr-2">📊</span> Dashboard
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/users"
+                className={({ isActive }) =>
+                  `block p-3 rounded hover:bg-gray-700 ${
+                    isActive ? "bg-blue-600" : ""
+                  }`
+                }
+              >
+                <span className="mr-2">👥</span> Utilisateurs
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/reports"
+                className={({ isActive }) =>
+                  `block p-3 rounded hover:bg-gray-700 ${
+                    isActive ? "bg-blue-600" : ""
+                  }`
+                }
+              >
+                <span className="mr-2">🚨</span> Signalements
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/predictions"
+                className={({ isActive }) =>
+                  `block p-3 rounded hover:bg-gray-700 ${
+                    isActive ? "bg-blue-600" : ""
+                  }`
+                }
+              >
+                <span className="mr-2">🔮</span> Prédictions
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
   );
 };
 
